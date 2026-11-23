@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kế hoạch tập gym</title>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--tx:#1f2430;--mut:#6b7280;--pri:#e4572e;--ok:#1f9d55;--bd:#e5e7eb}
+@media(prefers-color-scheme:dark){:root{--bg:#14161c;--card:#1d2028;--tx:#eceef3;--mut:#9aa1ae;--bd:#2c303b}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--tx);padding:10px 10px 80px}
+h1{font-size:1.25rem;margin:4px 0 10px;text-align:center}
+h2{font-size:1rem;margin:0 0 8px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);z-index:5}
+nav button{flex:1;padding:10px 2px;border:0;background:none;color:var(--mut);font-size:.72rem;cursor:pointer}
+nav button b{display:block;font-size:1.1rem}
+nav button.on{color:var(--pri);font-weight:600}
+.tabs{display:flex;gap:6px;margin-bottom:8px}
+.tabs button{padding:8px 16px;border:1px solid var(--bd);border-radius:20px;background:var(--card);color:var(--tx);cursor:pointer}
+.tabs button.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.card{background:var(--card);border-radius:12px;padding:10px;margin-top:8px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:600px}
+th{font-size:.78rem;color:var(--mut);text-align:left;padding:6px 4px;border-bottom:2px solid var(--bd)}
+td{padding:4px;border-bottom:1px solid var(--bd)}
+input[type=text],input[type=number],select{width:100%;padding:7px 6px;border:1px solid var(--bd);border-radius:6px;background:transparent;color:var(--tx);font-size:.9rem}
+select option{color:#000}
+td.n{width:60px}td.w{width:78px}td.d{width:100px}td.c{width:34px;text-align:center}
+input[type=checkbox]{width:20px;height:20px}
+.del{border:0;background:none;color:#d33;font-size:1.1rem;cursor:pointer}
+.btn{padding:10px 14px;border:0;border-radius:8px;background:var(--pri);color:#fff;font-size:.95rem;cursor:pointer}
+.btn.full{width:100%;margin-top:10px}
+.row{display:flex;gap:6px}
+.mut{color:var(--mut);font-size:.85rem}
+.day{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.day.done{border-left:4px solid var(--ok)}
+.ex{padding:4px 0;border-bottom:1px solid var(--bd);font-size:.9rem}
+.ex:last-child{border:0}
+.chk{flex:0 0 auto;padding:8px 12px;border:1px solid var(--ok);border-radius:8px;background:none;color:var(--ok);cursor:pointer;font-size:.85rem}
+.chk.on{background:var(--ok);color:#fff}
+.sticky{position:sticky;top:0;z-index:4;background:var(--bg);padding:6px 0 2px;margin-top:-6px}
+.stk{position:sticky;top:6px;z-index:4}
+.savebtn{position:sticky;bottom:62px;z-index:4;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.bar{height:8px;background:var(--bd);border-radius:4px;overflow:hidden;margin:6px 0}
+.bar i{display:block;height:100%;background:var(--ok)}
+</style>
+</head>
+<body>
+<h1>🏋️ Kế hoạch tập gym</h1>
+<div id="app"></div>
+<nav id="nav"></nav>
+<script>
+const K="gymplan_v3",DAYS=["Thứ 2","Thứ 3","Thứ 4","Thứ 5","Thứ 6","Thứ 7","Chủ nhật"];
+const GROUPS=["Ngực","Lưng","Chân","Vai","Tay","Bụng"];
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+function defaults(){
+ const L=[["Bench press","Ngực"],["Incline dumbbell press","Ngực"],["Cable fly","Ngực"],["Deadlift","Lưng"],["Lat pulldown","Lưng"],["Seated row","Lưng"],["Squat","Chân"],["Leg press","Chân"],["Romanian deadlift","Chân"],["Overhead press","Vai"],["Lateral raise","Vai"],["Barbell curl","Tay"],["Tricep pushdown","Tay"],["Plank","Bụng"]];
+ const lib=L.map((x,i)=>({id:i+1,name:x[0],group:x[1]}));
+ const mk=(id,day,set,rep,kg)=>({exId:id,name:lib[id-1].name,day,set,rep,kg,note:""});
+ const plan={w1:[mk(1,0,4,10,60),mk(2,0,3,12,20),mk(4,1,4,6,80),mk(5,1,4,10,50),mk(7,3,4,8,70),mk(8,3,3,12,120),mk(10,4,4,8,40)],
+             w2:[mk(1,0,5,5,65),mk(3,0,3,15,15),mk(6,1,4,10,45),mk(12,1,3,12,25),mk(7,3,5,5,75),mk(9,3,3,10,50),mk(11,4,4,15,8),mk(14,4,3,60,0)]};
+ return {nid:100,lib,plan,sel:{w1:{},w2:{}},chk:{}};
+}
+let S=null;try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
+if(!S){try{S=JSON.parse(localStorage.getItem("gymplan_v2"))}catch(e){}
+ if(!S)S=defaults();
+ syncSel("w1");syncSel("w2");save()}
+function syncSel(w){S.sel[w]={};S.plan[w].forEach(p=>{const a=S.sel[w][p.day]=S.sel[w][p.day]||[];if(!a.includes(p.exId))a.push(p.exId)})}
+function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
+let page=1,wk="w1",dp=0;
+const PAGES=[["📚","Bài tập"],["✅","Chọn tuần"],["📝","Đã lưu"],["📅","Lịch tập"]];
+function go(p){page=p;render()}
+function setWk(w){wk=w;render()}
+function wkTabs(n){return `<div class="tabs${n?"":" sticky"}"><button class="${wk==="w1"?"on":""}" onclick="setWk('w1')">Tuần 1</button><button class="${wk==="w2"?"on":""}" onclick="setWk('w2')">Tuần 2</button></div>`}
+function dayOpts(sel){return DAYS.map((d,i)=>`<option value="${i}" ${i==sel?"selected":""}>${d}</option>`).join("")}
+
+/* Trang 1: thư viện bài tập */
+function p1(){
+ return `<div class="card stk"><h2>Thêm bài tập mới</h2><div class="row"><input type="text" id="nn" placeholder="Tên bài tập"><select id="ng" style="width:110px">${GROUPS.map(g=>`<option>${g}</option>`).join("")}</select><button class="btn" onclick="addEx()">+</button></div></div>
+ <div class="card"><h2>Danh sách bài tập (${S.lib.length})</h2><div class="wrap"><table style="min-width:360px"><thead><tr><th>Tên bài tập</th><th>Nhóm cơ</th><th></th></tr></thead><tbody>${S.lib.map((e,i)=>`<tr><td><input type="text" value="${esc(e.name)}" onchange="S.lib[${i}].name=this.value;save()"></td><td class="d"><select onchange="S.lib[${i}].group=this.value;save()">${GROUPS.map(g=>`<option ${g===e.group?"selected":""}>${g}</option>`).join("")}</select></td><td class="c"><button class="del" onclick="delEx(${i})">✕</button></td></tr>`).join("")}</tbody></table></div></div>`;
+}
+function addEx(){const n=document.getElementById("nn").value.trim();if(!n)return;S.lib.push({id:S.nid++,name:n,group:document.getElementById("ng").value});save();render()}
+function delEx(i){const id=S.lib[i].id;S.lib.splice(i,1);["w1","w2"].forEach(w=>{for(const d in S.sel[w])S.sel[w][d]=S.sel[w][d].filter(x=>x!==id)});save();render()}
+
+/* Trang 2: chọn tuần -> chọn ngày -> chọn bài tập */
+function setDay(d){dp=d;render()}
+function p2(){
+ const sel=S.sel[wk],cur=sel[dp]||[];
+ let total=0;for(const d in sel)total+=sel[d].length;
+ const dtabs=`<div class="tabs" style="overflow-x:auto">${DAYS.map((d,i)=>`<button class="${i===dp?"on":""}" style="flex:0 0 auto" onclick="setDay(${i})">${d}${(sel[i]||[]).length?` (${(sel[i]||[]).length})`:""}</button>`).join("")}</div>`;
+ return `<div class="sticky">${wkTabs(1)}${dtabs}</div>`+`<div class="card"><h2>${DAYS[dp]} · ${wk==="w1"?"Tuần 1":"Tuần 2"}: chọn bài tập (${cur.length} bài)</h2><div class="wrap"><table style="min-width:300px"><tbody>${S.lib.map(e=>`<tr><td class="c"><input type="checkbox" ${cur.includes(e.id)?"checked":""} onchange="tog(${e.id},this.checked)"></td><td>${esc(e.name)} <span class="mut">· ${e.group}</span></td></tr>`).join("")}</tbody></table></div><div class="mut" style="margin-top:8px">Tổng cả tuần: ${total} bài</div><button class="btn full savebtn" onclick="savePlan()">💾 Lưu sang trang "Đã lưu"</button></div>`;
+}
+function tog(id,on){
+ const a=S.sel[wk][dp]=S.sel[wk][dp]||[];
+ if(on&&!a.includes(id))a.push(id);
+ if(!on)S.sel[wk][dp]=a.filter(x=>x!==id);
+ save();render();
+}
+function savePlan(){
+ const old=S.plan[wk],out=[];
+ for(let d=0;d<7;d++)(S.sel[wk][d]||[]).forEach(id=>{
+  const e=S.lib.find(x=>x.id===id);if(!e)return;
+  const f=old.find(o=>o.exId===id&&o.day===d);
+  out.push(f||{exId:id,name:e.name,day:d,set:3,rep:10,kg:0,note:""})});
+ S.plan[wk]=out;save();go(3);
+}
+
+/* Trang 3: chỉnh sửa kế hoạch đã lưu */
+function p3(){
+ const rows=S.plan[wk].map((r,i)=>[r,i]).sort((a,b)=>a[0].day-b[0].day);
+ return wkTabs()+`<div class="card"><h2>Kế hoạch đã lưu - ${wk==="w1"?"Tuần 1":"Tuần 2"}</h2><div class="wrap"><table><thead><tr><th>Ngày</th><th>Bài tập</th><th>Set</th><th>Rep</th><th>Tạ (kg)</th><th>Ghi chú</th><th></th></tr></thead><tbody>${rows.length?rows.map(([r,i])=>`<tr><td class="d"><select onchange="upd(${i},'day',+this.value,1)">${dayOpts(r.day)}</select></td><td><input type="text" value="${esc(r.name)}" onchange="upd(${i},'name',this.value)"></td><td class="n"><input type="number" value="${esc(r.set)}" onchange="upd(${i},'set',this.value)"></td><td class="n"><input type="number" value="${esc(r.rep)}" onchange="upd(${i},'rep',this.value)"></td><td class="w"><input type="number" value="${esc(r.kg)}" onchange="upd(${i},'kg',this.value)"></td><td><input type="text" value="${esc(r.note)}" onchange="upd(${i},'note',this.value)"></td><td class="c"><button class="del" onclick="rm(${i})">✕</button></td></tr>`).join(""):`<tr><td colspan="7" class="mut" style="padding:16px;text-align:center">Chưa có bài tập. Sang trang "Chọn tuần" để chọn.</td></tr>`}</tbody></table></div></div>`;
+}
+function upd(i,k,v,re){S.plan[wk][i][k]=v;if(k==="day")syncSel(wk);save();if(re)render()}
+function rm(i){S.plan[wk].splice(i,1);syncSel(wk);save();render()}
+
+/* Trang 4: lịch trình + check-in */
+function p4(){
+ const plan=S.plan[wk];let done=0,train=0;
+ const cards=DAYS.map((d,di)=>{
+  const ex=plan.filter(p=>p.day===di),key=wk+"-"+di,ck=!!S.chk[key];
+  if(ex.length){train++;if(ck)done++}
+  return `<div class="card day ${ck&&ex.length?"done":""}"><div style="flex:1"><h2>${d}</h2>${ex.length?ex.map(p=>`<div class="ex"><b>${esc(p.name)}</b><br><span class="mut">${esc(p.set)} set × ${esc(p.rep)} rep${+p.kg?` · ${esc(p.kg)} kg`:""}${p.note?` · ${esc(p.note)}`:""}</span></div>`).join(""):`<span class="mut">Ngày nghỉ 😴</span>`}</div>${ex.length?`<button class="chk ${ck?"on":""}" onclick="chk('${key}')">${ck?"✓ Đã tập":"Check-in"}</button>`:""}</div>`}).join("");
+ const pct=train?Math.round(done/train*100):0;
+ return wkTabs()+`<div class="card"><h2>Tiến độ: ${done}/${train} buổi tập (${pct}%)</h2><div class="bar"><i style="width:${pct}%"></i></div></div>`+cards;
+}
+function chk(k){S.chk[k]=!S.chk[k];save();render()}
+
+function render(){
+ document.getElementById("nav").innerHTML=PAGES.map((p,i)=>`<button class="${page===i+1?"on":""}" onclick="go(${i+1})"><b>${p[0]}</b>${i+1}. ${p[1]}</button>`).join("");
+ document.getElementById("app").innerHTML=[p1,p2,p3,p4][page-1]();
+}
+render();
+</script>
+</body>
+</html>
